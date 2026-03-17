@@ -6,7 +6,10 @@ indicator("CORE SOS V6", shorttitle="CORE SOS V6", overlay=true, max_labels_coun
 // ==============================================================================
 grp_strat = "1. STRATEGY SELECTION"
 
-// NEW: Fixed Timeframe Selection
+macro_score = input.float(65.0, "Macro Score (from Command Center)", 
+     minval=0, maxval=100, step=0.1, group=grp_strat, 
+     tooltip="Each morning, type the composite Macro Score from your Command Center here. This determines your position sizing and action zone.")
+
 fixedTF = input.timeframe("D", "Indicator Timeframe", options=["240", "D"], group=grp_strat, tooltip="Freeze the indicator to run calculations on this timeframe, regardless of the chart's current timeframe.")
 
 bullMode1 = input.string("Standard SOS (SD)", "Bull Mode 1 (Primary)", 
@@ -186,30 +189,28 @@ lenEMA50 = input.int(50, "Chart Trend: EMA 50", minval=1, group=grp_chart)
 htfTimeframe = input.timeframe("1W", "Higher Timeframe", group=grp_chart)
 htfEMALen    = input.int(20, "HTF Trend EMA Length", minval=5, group=grp_chart)
 
-// ==============================================================================
-// 5. MACRO LINK
-// ==============================================================================
-grp_macro = "5. MACRO LINK"
-macro_score = input.float(65.0, "Macro Score (from Command Center)", 
-     minval=0, maxval=100, step=0.1, group=grp_macro, 
-     tooltip="Each morning, open your Macro Command Center v2.3 and type the composite Macro Score here.")
+// (Moved Macro Score input to Section 1)
 
-// Derive Action Zone from Score
-string macro_action = "CASH / HEDGE"
-color macro_action_col = color.red
+// ══════════════════════════════════════════════════════════════════════════════
+// MACRO ACTION LOGIC (Derived from Section 1)
+// ══════════════════════════════════════════════════════════════════════════════
+// Default state catches 0 to 19
+string macro_action = "CASH / HEDGE | B/O FAIL"
+color macro_action_col = #8B0000 // Dark Red
 
-if macro_score >= 80
-    macro_action := "AGGRESSIVE"
-    macro_action_col := #0F6E56
-else if macro_score >= 60
-    macro_action := "FULL SIZE"
-    macro_action_col := #1D9B52
-else if macro_score >= 40
-    macro_action := "HALF SIZE"
-    macro_action_col := #854F0B
-else if macro_score >= 20
-    macro_action := "TRAPS ONLY"
-    macro_action_col := #A32D2D
+// Top-down logic creates the exact buckets
+if macro_score >= 80       // 80 to 100
+    macro_action := "AGGRESSIVE | B/O WORK"
+    macro_action_col := #0B6E29 // Dark Green
+else if macro_score >= 60  // 60 to 79
+    macro_action := "FULL SIZE | B/O WORK"
+    macro_action_col := #1D9B52 // Light Green
+else if macro_score >= 40  // 40 to 59
+    macro_action := "HALF SIZE | THEME B/O"
+    macro_action_col := #D9730D // Orange
+else if macro_score >= 20  // 20 to 39
+    macro_action := "TRAPS ONLY | B/O FAIL"
+    macro_action_col := #D32F2F // Light Red
 
 // ==============================================================================
 // 5. FREQUENCY & EXEMPTIONS
@@ -1049,9 +1050,9 @@ string maHeader = "MA Ext " + str.tostring(maExtLength)
 var string[] headers = na
 string brkHeader = str.tostring(bullBreakoutATR, "#.#") + "× BRK"
 if enableRegime
-    headers := array.from('TF', 'Bull SOS', 'Index', 'Breadth', 'Action', 'MMFI-50', 'Corr (5D)', 'HTF', 'Chart', maHeader, brkHeader, 'Avg Bars')
+    headers := array.from('TF', 'Bull SOS', 'Macro Score', 'Action', 'Corr (5D)', 'HTF', 'Chart', maHeader, brkHeader, 'Avg Bars')
 else
-    headers := array.from('TF', 'Bull SOS', 'Index', 'Breadth', 'Action', 'MMFI-50', 'Corr (5D)', 'HTF', 'Chart', maHeader, brkHeader)
+    headers := array.from('TF', 'Bull SOS', 'Macro Score', 'Action', 'Corr (5D)', 'HTF', 'Chart', maHeader, brkHeader)
 
 // Robust Table Creation
 // FIX: Removed local cols/rows that were causing scope errors
@@ -1085,12 +1086,12 @@ f_populateStatsDashboard() =>
         array.push(values, val_context)    // 6 (Chart)
         array.push(values, val_ext)        // 7 (MA Ext)
 
-        // 10 (Breakout ATR)
+        // 8 (Breakout ATR)
         string val_brk = str.tostring(calcAutoMult, "#.##") + "×"
         array.push(values, val_brk)
 
         if enableRegime
-            array.push(values, str.tostring(avgBars, "#.#")) // 11 (Avg Bars)
+            array.push(values, str.tostring(avgBars, "#.#")) // 9 (Avg Bars)
 
         // 4. The Loop (Where 'i', 'c', 'r' are defined)
         for i = 0 to array.size(headers) - 1
