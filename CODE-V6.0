@@ -1317,12 +1317,9 @@ f_populateStatsDashboard()
 // ══════════════════════════════════════════════════════════════════════════════
 // BACKTEST ENGINE (Section 0 Logic)
 // ══════════════════════════════════════════════════════════════════════════════
-bool bt_validTF = timeframe.isdaily or timeframe.period == "240" or timeframe.isweekly
+bool bt_validTF_raw = timeframe.isdaily or timeframe.period == "240" or timeframe.isweekly
+bool bt_validTF = bt_enabled and bt_validTF_raw
 bool bt_inDateRange = bt_allDates or (time >= bt_dateFrom and time <= bt_dateTo)
-
-// Master switch — skip everything if disabled
-if not bt_enabled
-    bt_validTF := false
 
 // --- Signal Selection ---
 f_bt_getSignal() =>
@@ -1476,13 +1473,20 @@ var string[] bt_rowLabels = array.from("Avg Gain %", "", "Win %", "RR", "Total G
 var table bt_table = na
 var table bt_msgTable = na
 
-// Show TF warning message if backtest enabled but wrong timeframe
-if barstate.isfirst and bt_enabled and bt_showTable and not bt_validTF
+// Show TF info/warning message
+string bt_tfLabel = fixedTF == "240" ? "4H" : fixedTF == "D" ? "Daily" : fixedTF
+bool bt_wrongChartTF = not (timeframe.isdaily or timeframe.period == "240" or timeframe.isweekly)
+bool bt_tfMismatch = timeframe.period != fixedTF and not bt_wrongChartTF
+
+if barstate.isfirst and bt_enabled and bt_showTable and (bt_wrongChartTF or bt_tfMismatch)
     bt_msgTable := table.new(bt_tblPos, 1, 1, bgcolor=color.new(color.orange, 20), border_width=1, frame_color=color.gray)
 
-if barstate.islast and not na(bt_msgTable) and bt_enabled and not bt_validTF
-    table.cell(bt_msgTable, 0, 0, "Backtest requires 4H / Daily / Weekly", text_color=color.black, bgcolor=color.new(color.orange, 20), text_halign=text.align_center, text_size=bt_tblSize)
-
+if barstate.islast and not na(bt_msgTable) and bt_enabled
+    if bt_wrongChartTF
+        table.cell(bt_msgTable, 0, 0, "⚠ Backtest: switch to 4H / Daily / Weekly", text_color=color.black, bgcolor=color.new(color.orange, 20), text_halign=text.align_center, text_size=bt_tblSize)
+    else if bt_tfMismatch
+        table.cell(bt_msgTable, 0, 0, "ℹ Backtest running on " + bt_tfLabel + " data", text_color=color.black, bgcolor=color.new(color.blue, 70), text_halign=text.align_center, text_size=bt_tblSize)
+        
 if barstate.isfirst and bt_showTable and bt_validTF and bt_enabled
     int bt_cols = bt_tableOrient == "Horizontal" ? bt_numDays + 1 : 8  // +1 for label col  |  7 rows + 1 header
     int bt_rows = bt_tableOrient == "Horizontal" ? 8 : bt_numDays + 1
