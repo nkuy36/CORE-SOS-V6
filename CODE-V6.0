@@ -1471,23 +1471,10 @@ float bt_avgBarsToLOD = array.size(bt_lodCount) > 0 and array.get(bt_lodCount, 0
 var string[] bt_rowLabels = array.from("Avg Gain %", "", "Win %", "RR", "Total Gain %", "Avg Bars→LOD", "Signals")
 
 var table bt_table = na
-var table bt_msgTable = na
 
-// Show TF info/warning message
-string bt_tfLabel = fixedTF == "240" ? "4H" : fixedTF == "D" ? "Daily" : fixedTF
-bool bt_wrongChartTF = not (timeframe.isdaily or timeframe.period == "240" or timeframe.isweekly)
-bool bt_tfMismatch = timeframe.period != fixedTF and not bt_wrongChartTF
+// TF message removed — backtest table only visible on valid TFs
 
-if barstate.isfirst and bt_enabled and bt_showTable and (bt_wrongChartTF or bt_tfMismatch)
-    bt_msgTable := table.new(bt_tblPos, 1, 1, bgcolor=color.new(color.orange, 20), border_width=1, frame_color=color.gray)
-
-if barstate.islast and not na(bt_msgTable) and bt_enabled
-    if bt_wrongChartTF
-        table.cell(bt_msgTable, 0, 0, "⚠ Backtest: switch to 4H / Daily / Weekly", text_color=color.black, bgcolor=color.new(color.orange, 20), text_halign=text.align_center, text_size=bt_tblSize)
-    else if bt_tfMismatch
-        table.cell(bt_msgTable, 0, 0, "ℹ Backtest running on " + bt_tfLabel + " data", text_color=color.black, bgcolor=color.new(color.blue, 70), text_halign=text.align_center, text_size=bt_tblSize)
-        
-if barstate.isfirst and bt_showTable and bt_validTF and bt_enabled
+if barstate.isfirst and bt_showTable and bt_validTF
     int bt_cols = bt_tableOrient == "Horizontal" ? bt_numDays + 1 : 8  // +1 for label col  |  7 rows + 1 header
     int bt_rows = bt_tableOrient == "Horizontal" ? 8 : bt_numDays + 1
     bt_table := table.new(bt_tblPos, bt_cols, bt_rows, bgcolor=bt_bgColor, border_width=1, frame_color=color.gray)
